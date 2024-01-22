@@ -1,0 +1,74 @@
+[
+ {
+  "code": "AWMS",
+  "name": "Al Waha Municipal Services",
+  "trn": "100311740200003",
+  "sector": "government",
+  "address": "Municipality Complex, Sheikh Rashid Street",
+  "emirate": "Ajman"
+ },
+ {
+  "code": "SPA",
+  "name": "Sahil Ports Authority",
+  "trn": "100527904800003",
+  "sector": "government",
+  "address": "Marine Building 2, Port Road",
+  "emirate": "Fujairah"
+ },
+ {
+  "code": "GCB",
+  "name": "Gulf Crescent Bank",
+  "trn": "100274611900003",
+  "sector": "bank",
+  "address": "Crescent Tower, Al Maryah Island",
+  "emirate": "Abu Dhabi"
+ },
+ {
+  "code": "MCB",
+  "name": "Marjan Commercial Bank",
+  "trn": "100690332100003",
+  "sector": "bank",
+  "address": "Level 18, Marjan Business Tower, Business Bay",
+  "emirate": "Dubai"
+ },
+ {
+  "code": "SPAC",
+  "name": "Seven Palms Academy",
+  "trn": "100845120700003",
+  "sector": "education",
+  "address": "Academic Block A, Al Rahmaniya 3",
+  "emirate": "Sharjah"
+ },
+ {
+  "code": "BAIS",
+  "name": "Bayt Al Ilm Schools",
+  "trn": "100163008400003",
+  "sector": "education",
+  "address": "Central Office, Al Qusais 2",
+  "emirate": "Dubai"
+ },
+ {
+  "code": "DMC",
+  "name": "Darat Medical Centre",
+  "trn": "100902774500003",
+  "sector": "healthcare",
+  "address": "Medical District, Khalifa City",
+  "emirate": "Abu Dhabi"
+ },
+ {
+  "code": "QLG",
+  "name": "Qasr Logistics Group",
+  "trn": "100735019600003",
+  "sector": "enterprise",
+  "address": "Warehouse 12, Jebel Ali Free Zone South",
+  "emirate": "Dubai"
+ },
+ {
+  "code": "NWH",
+  "name": "Nakheel Wharf Hotels",
+  "trn": null,
+  "sector": "enterprise",
+  "address": "Tower B, Al Sufouh 2",
+  "emirate": "Dubai"
+ }
+]
