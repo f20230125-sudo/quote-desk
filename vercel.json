@@ -1,10 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm --prefix web ci && npm --prefix web run build",
+  "rewrites": [{ "source": "/((?!api/|assets/|og\\.png|favicon\\.svg).*)", "destination": "/index.html" }],
   "functions": {
     "app.py": {
       "maxDuration": 30,
-      "excludeFiles": "{web/**,tests/**,tools/**,docs/**,public/assets/**,.github/**}"
+      "excludeFiles": "{web/**,tests/**,tools/**,docs/**,public/**,.github/**}"
     }
   }
 }

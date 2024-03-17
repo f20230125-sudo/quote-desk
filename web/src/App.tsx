@@ -20,7 +20,7 @@ function Layout() {
             <NavLink to="/" end>
               Quotation
             </NavLink>
-            <NavLink to="/assets">Company assets</NavLink>
+            <NavLink to="/company">Company assets</NavLink>
           </nav>
           <a className="top-link" href="https://order-desk-ops.vercel.app">
             Order Desk
@@ -51,7 +51,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={data ? <Editor data={data} /> : wait} />
-          <Route path="/assets" element={data ? <Assets data={data} /> : wait} />
+          <Route path="/company" element={data ? <Assets data={data} /> : wait} />
           <Route
             path="*"
             element={

@@ -59,7 +59,7 @@ test("company assets list the clause versions and the policy", async ({ page }) 
 
 test("phone width, no sideways scroll", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const path of ["/", "/assets"]) {
+  for (const path of ["/", "/company"]) {
     await page.goto(path);
     await expect(page.locator("h1")).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
