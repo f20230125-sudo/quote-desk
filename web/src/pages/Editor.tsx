@@ -18,28 +18,43 @@ function Mark({ severity }: { severity: "block" | "warn" | "note" }) {
 
 export function Editor({ data }: { data: Data }) {
   const [draft, setDraft] = useState<Draft>(drafts.load);
-  const [checked, setChecked] = useState<Checked | null>(null);
+  const [result, setResult] = useState<{ draft: Draft; value: Checked } | null>(null);
+  const checked = result?.draft === draft ? result.value : null;
   const [error, setError] = useState<string | null>(null);
-  const [versions, setVersions] = useState<SavedVersion[]>(drafts.versions);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  const [savedVersions, setVersions] = useState<SavedVersion[]>(drafts.versions);
+  const versions = savedVersions.filter((v) => v.draft.quote_no === draft.quote_no);
   const [compare, setCompare] = useState<number | null>(null);
-  const [busy, setBusy] = useState<"pdf" | "docx" | null>(null);
+  const [busy, setBusy] = useState<"pdf" | "docx" | "save" | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const products = useMemo(() => new Map(data.catalogue.map((p) => [p.part_number, p])), [data]);
 
   useEffect(() => {
+    let active = true;
     document.title = `${draft.quote_no} v${draft.version}: Quote Desk`;
-    drafts.save(draft);
+    const saved = drafts.save(draft);
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
+      setDraftError(saved ? null : "The draft could not be saved in this browser. Keep this tab open and check browser storage.");
+      setError(null);
       api
         .check(draft)
         .then((c) => {
-          setChecked(c);
+          if (!active) return;
+          setResult({ draft, value: c });
           setError(null);
         })
-        .catch((e: Error) => setError(e.message));
+        .catch((e: Error) => {
+          if (!active) return;
+          setResult(null);
+          setError(e.message);
+        });
     }, 250);
-    return () => window.clearTimeout(timer.current);
+    return () => {
+      active = false;
+      window.clearTimeout(timer.current);
+    };
   }, [draft]);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }));
@@ -59,12 +74,20 @@ export function Editor({ data }: { data: Data }) {
       setBusy(null);
     }
   };
-  const saveVersion = () => {
-    const v = { draft, saved_at: new Date().toISOString(), total: checked?.total ?? "0" };
-    drafts.addVersion(v);
+  const saveVersion = async () => {
+    if (!checked || busy) return;
+    const v = { draft, saved_at: new Date().toISOString(), total: checked.total };
+    setBusy("save");
+    const failure = await drafts.addVersion(v);
+    setBusy(null);
+    if (failure) {
+      setStorageError(failure);
+      return;
+    }
+    setStorageError(null);
     const all = drafts.versions();
     setVersions(all);
-    setDraft((d) => ({ ...d, version: Math.max(...all.map((x) => x.draft.version)) + 1 }));
+    setDraft((d) => d.quote_no === draft.quote_no ? { ...d, version: Math.max(d.version, ...all.filter((x) => x.draft.quote_no === d.quote_no).map((x) => x.draft.version)) + 1 } : d);
   };
   const compared = compare !== null ? versions.find((v) => v.draft.version === compare) : null;
 
@@ -83,7 +106,7 @@ export function Editor({ data }: { data: Data }) {
               : `${blocks ? `${blocks} ${blocks === 1 ? "check blocks" : "checks block"} sending` : "Nothing blocks sending"}${warns ? `; ${warns} ${warns === 1 ? "needs" : "need"} a look` : ""}.`}
           </>
         ) : (
-          "Checking."
+          error ? "Checks failed." : "Checking."
         )}
       </p>
 
@@ -154,7 +177,7 @@ export function Editor({ data }: { data: Data }) {
                   const c = checked?.lines.find((x) => x.n === i + 1);
                   const issues = byLine(i + 1);
                   return [
-                    <tr key={`l${i}`} className={issues.some((f) => f.severity === "block") ? "blocked" : ""}>
+                    <tr key={l.id} className={issues.some((f) => f.severity === "block") ? "blocked" : ""}>
                       <td>
                         <select
                           className="mono"
@@ -192,7 +215,7 @@ export function Editor({ data }: { data: Data }) {
                       </td>
                     </tr>,
                     ...issues.map((f, k) => (
-                      <tr key={`f${i}-${k}`} className={`line-issue ${f.severity}`}>
+                      <tr key={`f${l.id}-${k}`} className={`line-issue ${f.severity}`}>
                         <td colSpan={7}>
                           <Mark severity={f.severity} /> {sentence(f.message.replace(/^Line \d+: /, ""))}
                         </td>
@@ -203,7 +226,7 @@ export function Editor({ data }: { data: Data }) {
               </tbody>
             </table>
             <button type="button" className="link add"
-              onClick={() => setDraft((d) => ({ ...d, lines: [...d.lines, { part_number: data.catalogue[0].part_number, qty: 1, unit_price: data.catalogue[0].list_price, discount_pct: "0" }] }))}>
+              onClick={() => setDraft((d) => ({ ...d, lines: [...d.lines, { id: crypto.randomUUID(), part_number: data.catalogue[0].part_number, qty: 1, unit_price: data.catalogue[0].list_price, discount_pct: "0" }] }))}>
               Add a line
             </button>
           </fieldset>
@@ -261,9 +284,9 @@ export function Editor({ data }: { data: Data }) {
 
         <aside className="side" aria-labelledby="checks-h">
           <h2 id="checks-h">Before it goes out</h2>
-          {error && (
+          {(error || storageError || draftError) && (
             <p className="form-error" role="alert">
-              {error}
+              {error || storageError || draftError}
             </p>
           )}
           {checked && checked.findings.length === 0 && <p>Every check passes.</p>}
@@ -308,7 +331,7 @@ export function Editor({ data }: { data: Data }) {
             <button type="button" className="button" disabled={busy !== null} onClick={() => void download("docx")}>
               Word file
             </button>
-            <button type="button" className="button" onClick={saveVersion}>
+            <button type="button" className="button" disabled={!checked || busy !== null} onClick={() => void saveVersion()}>
               Save as version {draft.version}
             </button>
           </div>
