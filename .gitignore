@@ -14,3 +14,6 @@ test-results/
 playwright-report/
 # Generated documents are rebuilt by synth/generate.py; only the ground truth is kept.
 /synth/out/
+
+.vercel
+.env*
