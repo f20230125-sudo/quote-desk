@@ -58,6 +58,7 @@ def render_docx(quote: Quote) -> bytes:
         ("Date", f"{q.issue_date:%d %B %Y}"),
         ("Valid until", f"{quote.valid_until:%d %B %Y}"),
         ("Your reference", q.their_ref or "-"),
+        ("Prepared by", q.prepared_by or "-"),
         ("For", cust["name"]),
         ("Address", f"{cust['address']}, {cust['emirate']}"),
         ("TRN", cust.get("trn") or "not on file"),

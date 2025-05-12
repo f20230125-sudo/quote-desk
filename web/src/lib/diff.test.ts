@@ -15,6 +15,29 @@ describe("what changed between versions", () => {
   it("is empty for the same draft", () => {
     expect(diff(v1, v1)).toEqual([]);
   });
+  it("keeps duplicate product rows in the comparison", () => {
+    const before = { ...v1, lines: [v1.lines[0], { ...v1.lines[0] }] };
+    const after = { ...before, lines: [{ ...before.lines[0], qty: 100 }, before.lines[1]] };
+    expect(diff(before, after)).toEqual(["PER760-XS2: quantity 4 to 100."]);
+  });
+  it("reports removal of one duplicate product row", () => {
+    const before = { ...v1, lines: [v1.lines[0], { ...v1.lines[0] }] };
+    expect(diff(before, { ...before, lines: [before.lines[0]] })).toEqual(["Removed 4 x PER760-XS2."]);
+  });
+  it("uses line IDs when duplicate rows are removed or reordered", () => {
+    const before = { ...v1, lines: [{ ...v1.lines[0], id: "first" }, { ...v1.lines[0], id: "second", qty: 8 }] };
+    expect(diff(before, { ...before, lines: [...before.lines].reverse() })).toEqual([]);
+    expect(diff(before, { ...before, lines: [{ ...before.lines[1], qty: 9 }] })).toEqual([
+      "PER760-XS2: quantity 8 to 9.", "Removed 4 x PER760-XS2.",
+    ]);
+  });
+  it.each([
+    ["their_ref", "RFQ-A", "RFQ-B", "Reference RFQ-A to RFQ-B."],
+    ["quote_no", "Q-A", "Q-B", "Quotation number Q-A to Q-B."],
+    ["prepared_by", "Uzair", "Khan", "Prepared by Uzair to Khan."],
+  ])("includes changes to %s", (field, before, after, message) => {
+    expect(diff({ ...v1, [field]: before }, { ...v1, [field]: after })).toEqual([message]);
+  });
   it("says each change in words", () => {
     const v2: Draft = {
       ...v1, version: 2, approved_by: "R. Menon", clause_versions: { payment: 2 }, clauses: ["payment", "validity", "law"],

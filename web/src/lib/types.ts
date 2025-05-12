@@ -40,6 +40,7 @@ export interface Data {
 }
 
 export interface DraftLine {
+  id?: string;
   part_number: string;
   qty: number;
   unit_price: string;
