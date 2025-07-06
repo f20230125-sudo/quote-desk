@@ -1,5 +1,5 @@
 import type { Draft } from "./types";
-import { withLineIds } from "./drafts";
+import { normalizeQuoteNo, withLineIds } from "./drafts";
 
 // What changed between two versions of a quotation, line by line and term by term, in plain words.
 
@@ -24,7 +24,7 @@ export function diff(before: Draft, after: Draft): string[] {
     }
   }
   for (const [id, l] of b) if (!a.has(id)) out.push(`Removed ${l.qty} x ${l.part_number}.`);
-  if (before.quote_no !== after.quote_no) out.push(`Quotation number ${before.quote_no} to ${after.quote_no}.`);
+  if (normalizeQuoteNo(before.quote_no) !== normalizeQuoteNo(after.quote_no)) out.push(`Quotation number ${normalizeQuoteNo(before.quote_no)} to ${normalizeQuoteNo(after.quote_no)}.`);
   if (before.their_ref !== after.their_ref) out.push(`Reference ${before.their_ref || "-"} to ${after.their_ref || "-"}.`);
   if (before.prepared_by !== after.prepared_by) out.push(`Prepared by ${before.prepared_by || "-"} to ${after.prepared_by || "-"}.`);
   if (before.customer_code !== after.customer_code) out.push(`Customer ${before.customer_code} to ${after.customer_code}.`);

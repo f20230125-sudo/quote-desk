@@ -24,10 +24,12 @@ async function call(path: string, init?: RequestInit): Promise<Response> {
   return res;
 }
 
-const post = (path: string, draft: Draft) =>
-  call(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-    ...draft, lines: draft.lines.map(({ id: _id, ...line }) => line),
+const post = (path: string, draft: Draft) => {
+  const { quote_id: _quoteId, ...quote } = draft;
+  return call(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+    ...quote, lines: draft.lines.map(({ id: _id, ...line }) => line),
   }) });
+};
 
 export const api = {
   data: async (): Promise<Data> => (await call("/api/data")).json(),

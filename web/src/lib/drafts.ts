@@ -11,6 +11,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 // A realistic starting point: a bank's server refresh, with four problems a check should catch.
 export function exampleDraft(): Draft {
   return withLineIds({
+    quote_id: crypto.randomUUID(),
     quote_no: "Q-2026-0412",
     version: 1,
     customer_code: "GCB",
@@ -28,6 +29,14 @@ export function exampleDraft(): Draft {
     clauses: ["payment", "validity", "delivery", "warranty", "einvoice", "law"],
     clause_versions: { payment: 1 },
   });
+}
+
+// Pydantic strips Unicode White_Space, including U+0085 but excluding U+FEFF.
+export const normalizeQuoteNo = (number: string) => number.replace(/^\p{White_Space}+|\p{White_Space}+$/gu, "");
+
+function normalizeDraft(d: Draft): Draft {
+  const quote_no = normalizeQuoteNo(d.quote_no);
+  return withLineIds({ ...d, quote_no, quote_id: d.quote_id ?? `legacy:${quote_no}` });
 }
 
 export function withLineIds(d: Draft): Draft {
@@ -61,12 +70,12 @@ function versions(): SavedVersion[] {
   const old = JSON.parse(localStorage.getItem(VERSIONS) ?? "[]") as SavedVersion[];
   const keys = Object.keys(localStorage).filter((key) => key.startsWith(SNAPSHOT));
   return [...old, ...keys.map((key) => JSON.parse(localStorage.getItem(key)!) as SavedVersion)]
-    .map((v) => ({ ...v, draft: withLineIds(v.draft) }));
+    .map((v) => ({ ...v, draft: normalizeDraft(v.draft) }));
 }
 
 export const drafts = {
-  load: (): Draft => withLineIds(read(DRAFT, exampleDraft())),
-  save: (d: Draft) => write(DRAFT, d),
+  load: (): Draft => normalizeDraft(read(DRAFT, exampleDraft())),
+  save: (d: Draft) => write(DRAFT, normalizeDraft(d)),
   versions: (): SavedVersion[] => {
     try {
       return versions();
@@ -75,9 +84,10 @@ export const drafts = {
     }
   },
   addVersion: async (v: SavedVersion): Promise<string | null> => {
+    v = { ...v, draft: normalizeDraft(v.draft) };
     const save = () => {
-      if (versions().some((x) => x.draft.quote_no === v.draft.quote_no && x.draft.version === v.draft.version)) {
-        return "This quotation version is already saved. Continue in the tab that saved it or change the quotation number.";
+      if (versions().some((x) => (x.draft.quote_id === v.draft.quote_id || x.draft.quote_no === v.draft.quote_no) && x.draft.version === v.draft.version)) {
+        return "This quotation version is already saved. Continue in the tab that saved it.";
       }
       return write(`${SNAPSHOT}${crypto.randomUUID()}`, v) ? null : "The version could not be saved. Check browser storage and try again.";
     };

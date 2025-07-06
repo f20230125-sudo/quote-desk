@@ -33,7 +33,14 @@ def wrap(text: str, font: str, size: float, width: float) -> list[str]:
         if stringWidth(trial, font, size) <= width:
             cur = trial
         else:
-            lines.append(cur)
+            if cur:
+                lines.append(cur)
+            while stringWidth(w, font, size) > width:
+                end = 1
+                while end < len(w) and stringWidth(w[: end + 1], font, size) <= width:
+                    end += 1
+                lines.append(w[:end])
+                w = w[end:]
             cur = w
     if cur:
         lines.append(cur)
@@ -129,9 +136,13 @@ def _draw(quote: Quote, total_pages) -> Page:
         ("Your reference", q.their_ref or "-"),
         ("Prepared by", q.prepared_by or "-"),
     ]
-    for k, (label, value) in enumerate(meta):
-        p.text(118 * mm, (40 + k * 5) * mm, label, size=8, color=GREY)
-        p.text(145 * mm, (40 + k * 5) * mm, value, size=8.5)
+    meta_y = 40 * mm
+    for label, value in meta:
+        lines = wrap(value, "Helvetica", 8.5, W - M - 145 * mm)
+        p.text(118 * mm, meta_y, label, size=8, color=GREY)
+        for k, line in enumerate(lines):
+            p.text(145 * mm, meta_y + k * 4 * mm, line, size=8.5)
+        meta_y += max(5 * mm, len(lines) * 4 * mm + mm)
     p.text(M, 52 * mm, "For", size=8, color=GREY)
     p.text(M, 57 * mm, cust["name"], size=10, bold=True)
     p.text(M, 62 * mm, f"{cust['address']}, {cust['emirate']}", size=8.5)
@@ -142,7 +153,7 @@ def _draw(quote: Quote, total_pages) -> Page:
         size=8.5,
         color=black if cust.get("trn") else GREY,
     )
-    p.y = 80 * mm
+    p.y = max(80 * mm, meta_y + 10 * mm)
     p.rule(p.y - 4 * mm, width=1, color=black)
     for label, x, align in COLS:
         p.text(x, p.y, label, size=8, bold=True, right=(align == "r"))
