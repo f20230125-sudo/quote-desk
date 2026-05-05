@@ -3,6 +3,7 @@
 import io
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from docx import Document
@@ -52,6 +53,18 @@ def test_figures():
     assert ln.margin == Decimal("87210.00") - Decimal("37635.00") * 2
 
 
+def test_discount_is_rounded_after_multiplying_by_quantity():
+    q = build(
+        QuoteIn.model_validate(
+            quote(lines=[dict(part_number="VVF-CORE-1Y", qty=16, unit_price="620.00", discount_pct="3.33")])
+        ),
+        today=TODAY,
+    )
+    assert q.lines[0].net == q.subtotal == Decimal("9589.66")
+    assert q.vat == Decimal("479.48") and q.total == Decimal("10069.14")
+    assert q.margin == Decimal("9589.66") - q.lines[0].cost * 16
+
+
 def test_below_cost_blocks():
     msgs = messages(lines=[dict(part_number="SFP28-SR-25G", qty=4, unit_price="500.00")])
     assert (
@@ -63,6 +76,15 @@ def test_below_cost_blocks():
 def test_thin_margin_warns():
     msgs = messages(lines=[dict(part_number="SFP28-SR-25G", qty=4, unit_price="600.00")])
     assert ("warn", "Line 1: margin on SFP28-SR-25G is 8%, under the 10% floor.") in msgs
+
+
+def test_margin_rounding_does_not_hide_a_policy_warning():
+    q = build(
+        QuoteIn.model_validate(quote(lines=[dict(part_number="SFP28-SR-25G", qty=1, unit_price="613.30")])),
+        today=TODAY,
+    )
+    assert q.lines[0].margin_pct == Decimal("10.00")
+    assert any(f.severity == "warn" and "floor" in f.message for f in q.findings)
 
 
 def test_big_discount_needs_an_approver():
@@ -134,10 +156,65 @@ def test_word_file_has_the_lines_and_terms():
     assert "PER760-XS2" in text and "Payment within 30 days" in text and "Total AED" in text
 
 
+@pytest.mark.parametrize("prepared_by", ["Uzair Khan", ""])
+def test_word_file_includes_the_preparer(prepared_by):
+    q = build(QuoteIn.model_validate(quote(prepared_by=prepared_by)), today=TODAY)
+    doc = Document(io.BytesIO(render_docx(q)))
+    rows = [(r.cells[0].text, r.cells[1].text) for r in doc.tables[0].rows]
+    assert ("Prepared by", prepared_by or "-") in rows
+
+
+def test_readme_runs_flask_from_the_installed_environment():
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    assert ".venv/Scripts/python -m flask --app app run -p 5201" in readme
+
+
 @pytest.fixture
 def client():
     app.config["TESTING"] = True
     return app.test_client()
+
+
+@pytest.mark.parametrize("endpoint", ["check", "pdf", "docx"])
+@pytest.mark.parametrize("version", [99, 0, -1])
+def test_api_refuses_unknown_clause_versions(client, endpoint, version):
+    r = client.post(f"/api/quote/{endpoint}", json=quote(clause_versions={"payment": version}))
+    assert r.status_code == 400
+    assert any(d["field"] == "clause_versions" for d in r.get_json()["error"]["details"])
+
+
+@pytest.mark.parametrize("endpoint", ["check", "pdf", "docx"])
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("quote_no", "Q-TEST\r\nX-Demo: yes"),
+        ("quote_no", "Q-TEST\n"),
+        ("quote_no", "Q-TEST\r"),
+        ("quote_no", "Q-TEST\x00"),
+        ("their_ref", "RFQ\x00X"),
+        ("their_ref", "RFQ\x0bX"),
+        ("their_ref", "RFQ\ufffeX"),
+        ("prepared_by", "Name\x0cX"),
+        ("approved_by", "Name\x1fX"),
+    ],
+)
+def test_api_refuses_characters_that_break_documents(client, endpoint, field, value):
+    r = client.post(f"/api/quote/{endpoint}", json=quote(**{field: value}))
+    assert r.status_code == 400
+    assert any(d["field"] == field for d in r.get_json()["error"]["details"])
+
+
+@pytest.mark.parametrize("endpoint", ["check", "pdf", "docx"])
+@pytest.mark.parametrize("validity", [{}, {"valid_days": 30}])
+def test_api_refuses_an_expiry_beyond_the_calendar(client, endpoint, validity):
+    r = client.post(f"/api/quote/{endpoint}", json=quote(issue_date="9999-12-31", **validity))
+    assert r.status_code == 400
+    assert any(d["field"] == "valid_days" for d in r.get_json()["error"]["details"])
+
+
+def test_api_accepts_the_last_representable_expiry(client):
+    r = client.post("/api/quote/check", json=quote(issue_date="9999-12-30", valid_days=1))
+    assert r.status_code == 200 and r.get_json()["valid_until"] == "9999-12-31"
 
 
 def test_api_check_and_files(client):
