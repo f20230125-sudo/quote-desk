@@ -24,7 +24,7 @@ export function Editor({ data }: { data: Data }) {
   const [draftError, setDraftError] = useState<string | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [savedVersions, setVersions] = useState<SavedVersion[]>(drafts.versions);
-  const versions = savedVersions.filter((v) => v.draft.quote_no === draft.quote_no);
+  const versions = savedVersions.filter((v) => v.draft.quote_id === draft.quote_id);
   const [compare, setCompare] = useState<number | null>(null);
   const [busy, setBusy] = useState<"pdf" | "docx" | "save" | null>(null);
   const timer = useRef<number | undefined>(undefined);
@@ -87,7 +87,7 @@ export function Editor({ data }: { data: Data }) {
     setStorageError(null);
     const all = drafts.versions();
     setVersions(all);
-    setDraft((d) => d.quote_no === draft.quote_no ? { ...d, version: Math.max(d.version, ...all.filter((x) => x.draft.quote_no === d.quote_no).map((x) => x.draft.version)) + 1 } : d);
+    setDraft((d) => d.quote_id === draft.quote_id ? { ...d, version: Math.max(d.version, ...all.filter((x) => x.draft.quote_id === d.quote_id).map((x) => x.draft.version)) + 1 } : d);
   };
   const compared = compare !== null ? versions.find((v) => v.draft.version === compare) : null;
 

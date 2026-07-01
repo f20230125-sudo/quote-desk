@@ -48,6 +48,7 @@ export interface DraftLine {
 }
 
 export interface Draft {
+  quote_id?: string;
   quote_no: string;
   version: number;
   customer_code: string;
