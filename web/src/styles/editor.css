@@ -27,16 +27,47 @@ h1 .version {
 h1 .mono {
   font-weight: 600;
   font-stretch: 100%;
+  overflow-wrap: anywhere;
+}
+.intro {
+  max-width: 75ch;
+  margin: var(--s3) 0 var(--s2);
+  color: var(--ink-2);
+}
+.first-step {
+  margin: 0;
+  max-width: 75ch;
+}
+.first-step a {
+  display: inline-block;
+  padding-block: var(--s1);
+}
+[id="checks-h"],
+[id="lines-h"] {
+  scroll-margin-top: var(--s4);
+}
+.field-hint {
+  margin: 0 0 var(--s2);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.editor label > .field-hint {
+  font-weight: 400;
+  margin: 0;
+}
+.mobile-label {
+  display: none;
 }
 
 .editor-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
-  gap: var(--s6);
+  grid-template-columns: minmax(0, 1.85fr) minmax(340px, 1fr);
+  gap: var(--s5);
   align-items: start;
   margin-top: var(--s5);
 }
 .editor fieldset {
+  min-width: 0;
   border: 0;
   border-top: 2px solid var(--ink);
   margin: 0 0 var(--s5);
@@ -51,6 +82,7 @@ h1 .mono {
 .row2,
 .row3 {
   display: grid;
+  align-items: start;
   gap: var(--s3);
   margin-top: var(--s2);
 }
@@ -71,6 +103,7 @@ h1 .mono {
 }
 .editor input,
 .editor select {
+  min-width: 0;
   font: 400 15px/20px var(--sans);
   color: var(--ink);
   background: var(--sheet);
@@ -102,25 +135,25 @@ table.lines th {
   border-bottom: 1px solid var(--rule-strong);
 }
 table.lines th:nth-child(1) {
-  width: 34%;
+  width: 31%;
 }
 table.lines th:nth-child(2) {
-  width: 9%;
+  width: 8%;
 }
 table.lines th:nth-child(3) {
-  width: 15%;
-}
-table.lines th:nth-child(4) {
-  width: 10%;
-}
-table.lines th:nth-child(5) {
   width: 14%;
 }
+table.lines th:nth-child(4) {
+  width: 9%;
+}
+table.lines th:nth-child(5) {
+  width: 15%;
+}
 table.lines th:nth-child(6) {
-  width: 11%;
+  width: 13%;
 }
 table.lines th:last-child {
-  width: 7%;
+  width: 10%;
 }
 table.lines td {
   padding: 6px 4px;
@@ -129,6 +162,14 @@ table.lines td {
 }
 table.lines td.num input {
   text-align: right;
+  padding-inline: var(--s1);
+}
+table.lines tr:not(.line-issue) td:last-child {
+  text-align: right;
+}
+table.lines td .link {
+  font-size: 13px;
+  min-height: 38px;
 }
 table.lines .figure {
   padding-top: 15px;
@@ -199,6 +240,16 @@ tr.line-issue td > .ring {
 .side h2 + * {
   margin-top: 0;
 }
+.side h2.side-section {
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--rule-strong);
+}
+.finding-label {
+  display: inline;
+  font-size: 13px;
+  margin-right: var(--s2);
+}
 .findings {
   list-style: none;
   margin: 0;
@@ -239,6 +290,8 @@ tr.line-issue td > .ring {
 .totals div {
   display: flex;
   justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
   padding: 4px 0;
 }
 .totals dt {
@@ -247,6 +300,8 @@ tr.line-issue td > .ring {
 .totals dd {
   margin: 0;
   font-variant-numeric: tabular-nums;
+  margin-left: auto;
+  text-align: right;
 }
 .totals .grand {
   border-top: 1px solid var(--ink);
@@ -269,7 +324,7 @@ tr.line-issue td > .ring {
 }
 .button[disabled] {
   opacity: 0.5;
-  cursor: wait;
+  cursor: default;
 }
 .form-error {
   color: var(--pencil);
@@ -277,13 +332,14 @@ tr.line-issue td > .ring {
 }
 .versions {
   list-style: none;
-  margin: 0;
+  margin: var(--s3) 0 0;
   padding: 0;
   border-top: 1px solid var(--ink);
 }
 .versions li {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--s2);
   padding: 7px 0;
   border-bottom: 1px solid var(--rule);
@@ -329,6 +385,17 @@ tr.line-issue td > .ring {
 }
 .kv dd {
   margin: 0;
+  overflow-wrap: anywhere;
+}
+.library h3 .mono {
+  display: inline-block;
+  margin-left: var(--s2);
+}
+.library p {
+  max-width: 85ch;
+}
+.diff {
+  overflow-wrap: anywhere;
 }
 .library {
   list-style: none;
@@ -372,13 +439,79 @@ tr.line-issue td > .ring {
     position: static;
   }
 }
+@media (max-height: 900px) {
+  .side {
+    position: static;
+  }
+}
 @media (max-width: 760px) {
+  .top-inner {
+    padding: var(--s2) var(--s4) 0;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--s1) var(--s4);
+  }
+  .top-inner nav {
+    grid-row: 2;
+    grid-column: 1;
+    gap: var(--s3);
+  }
+  .top-inner nav a {
+    padding-block: var(--s3);
+  }
+  .top-link {
+    grid-row: 2;
+    grid-column: 2;
+    padding-block: var(--s2);
+  }
+  .foot {
+    padding-inline: var(--s4);
+  }
+  h1 {
+    font-size: 30px;
+    line-height: 36px;
+  }
+  h1 .version {
+    display: inline-block;
+    margin-left: 0;
+  }
+  .editor input,
+  .editor select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .editor input.mono,
+  .editor select.mono {
+    font-size: 16px;
+  }
+  .editor label.check input {
+    flex-shrink: 0;
+  }
+  .button,
+  .side .link,
+  .add {
+    min-height: 44px;
+  }
+  .side .link {
+    text-align: left;
+  }
+  .side .actions .button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
   .row2,
   .row3 {
     grid-template-columns: 1fr;
   }
   .kv {
     grid-template-columns: 1fr;
+    gap: var(--s1);
+  }
+  .kv dd + dt {
+    margin-top: var(--s3);
+  }
+  .brand-sheet {
+    padding: var(--s4);
   }
   table.lines thead {
     display: none;
@@ -391,11 +524,43 @@ tr.line-issue td > .ring {
     width: 100% !important;
   }
   table.lines tr {
-    padding: var(--s2) 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s3);
+    padding: var(--s4) 0;
     border-bottom: 1px solid var(--rule-strong);
   }
   table.lines td {
     border: 0;
+    padding: 0;
+    min-width: 0;
+    text-align: left;
+  }
+  table.lines tr.blocked {
+    background: var(--pencil-wash);
+  }
+  table.lines td:first-child {
+    grid-column: 1 / -1;
+  }
+  table.lines .figure {
+    padding-top: 0;
+  }
+  table.lines .mobile-label {
+    display: block;
+    font: 600 13px/20px var(--sans);
+    color: var(--ink-2);
+    margin-bottom: var(--s1);
+    white-space: normal;
+  }
+  table.lines td .link {
+    min-height: 44px;
+  }
+  table.lines tr.line-issue {
+    display: block;
+    padding: var(--s2) 0;
+  }
+  table.lines tr.line-issue td {
+    text-align: left;
   }
   table.lines td.num input {
     text-align: left;

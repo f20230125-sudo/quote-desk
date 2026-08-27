@@ -38,12 +38,19 @@ function Layout() {
 export default function App() {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    api.data().then(setData).catch((e: Error) => setError(e.message));
-  }, []);
+    let active = true;
+    api.data().then((value) => { if (active) setData(value); }).catch((e: Error) => { if (active) setError(e.message); });
+    return () => { active = false; };
+  }, [attempt]);
   const wait = (
     <div className="page">
-      <p className={error ? "form-error" : "quiet"}>{error ?? "Loading the catalogue."}</p>
+      <h1>{error ? "Quotation could not load" : "Loading Quote Desk"}</h1>
+      <p className={error ? "form-error" : "quiet"} role={error ? "alert" : "status"}>
+        {error ?? "Loading customers, products and quotation terms."}
+      </p>
+      {error && <button type="button" className="button" onClick={() => { setError(null); setAttempt((n) => n + 1); }}>Retry loading</button>}
     </div>
   );
   return (

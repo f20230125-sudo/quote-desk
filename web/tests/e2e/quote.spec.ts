@@ -37,7 +37,7 @@ test("the PDF and the Word file download", async ({ page }) => {
   await page.getByRole("button", { name: /PDF/ }).click();
   expect((await download).suggestedFilename()).toBe("Q-2026-0412-v1.pdf");
   download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Word file" }).click();
+  await page.getByRole("button", { name: "Download Word file" }).click();
   expect((await download).suggestedFilename()).toBe("Q-2026-0412-v1.docx");
 });
 
