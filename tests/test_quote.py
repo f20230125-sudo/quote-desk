@@ -4,10 +4,13 @@ import io
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from urllib.parse import unquote
 
 import pytest
 from docx import Document
 from pypdf import PdfReader
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from werkzeug.http import parse_options_header
 
 from app import app
 from backend.quote import QuoteIn, build, pct
@@ -229,3 +232,87 @@ def test_api_check_and_files(client):
     }
     assert client.get("/api/data").get_json()["assets"]["policy"]["margin_floor_pct"] == "10"
     assert client.get("/api/nope").status_code == 404
+
+
+@pytest.mark.parametrize("endpoint", ["pdf", "docx"])
+@pytest.mark.parametrize("number", ['Q-"Test"', "Q-Caf\u00e9"])
+def test_download_names_are_escaped_and_http_safe(client, endpoint, number):
+    response = client.post(f"/api/quote/{endpoint}", json=quote(quote_no=number))
+    assert response.status_code == 200
+    header = response.headers["Content-Disposition"]
+    header.encode("ascii")
+    disposition, params = parse_options_header(header)
+    assert disposition == "attachment"
+    assert params["filename"] == f"{number}-v1.{endpoint}"
+
+
+def test_arabic_word_download_name_is_encoded(client):
+    number = "Q-\u062f\u0628\u064a"
+    response = client.post("/api/quote/docx", json=quote(quote_no=number))
+    header = response.headers["Content-Disposition"]
+    header.encode("ascii")
+    assert unquote(header.split("filename*=UTF-8''")[1]) == f"{number}-v1.docx"
+
+
+@pytest.mark.parametrize("field", ["quote_no", "their_ref", "prepared_by"])
+@pytest.mark.parametrize("text", ["\u0623\u062d\u0645\u062f", "\u6f22\u5b57", "\U0001f642"])
+def test_unsupported_pdf_text_is_found_before_printing_and_kept_in_word(client, field, text):
+    value = f"Q-{text}" if field == "quote_no" else text
+    payload = quote(**{field: value})
+    checked = client.post("/api/quote/check", json=payload)
+    assert checked.status_code == 200
+    findings = checked.get_json()["findings"]
+    label = {"quote_no": "Quotation number", "their_ref": "Your reference", "prepared_by": "Prepared by"}[
+        field
+    ]
+    assert any(
+        f["severity"] == "block"
+        and f["message"].startswith(f"{label}:")
+        and "cannot be printed in the PDF yet; the Word file keeps it" in f["message"]
+        for f in findings
+    )
+    pdf = client.post("/api/quote/pdf", json=payload)
+    assert pdf.status_code == 400
+    assert any(d["field"] == field for d in pdf.get_json()["error"]["details"])
+    word = client.post("/api/quote/docx", json=payload)
+    assert word.status_code == 200
+    doc = Document(io.BytesIO(word.data))
+    assert any(value in cell.text for table in doc.tables for row in table.rows for cell in row.cells)
+
+
+def test_supported_pdf_characters_and_nonprinted_approver_are_accepted(client):
+    response = client.post(
+        "/api/quote/check", json=quote(prepared_by="Ren\u00e9 \u03a9", approved_by="\u0623\u062d\u0645\u062f")
+    )
+    assert response.status_code == 200 and not response.get_json()["blocked"]
+
+
+@pytest.mark.parametrize("version", [100, 101, 1000])
+@pytest.mark.parametrize("endpoint", ["check", "pdf", "docx"])
+def test_versions_beyond_99_can_be_checked_and_downloaded(client, endpoint, version):
+    assert client.post(f"/api/quote/{endpoint}", json=quote(version=version)).status_code == 200
+
+
+@pytest.mark.parametrize("value", ["RFQ-IT-2026-118-FOR-DUBAI-DATA-CENTRE-REFRESH-REQUEST", "W" * 60])
+def test_pdf_wraps_metadata_inside_the_page_without_overlapping_rows(value):
+    from backend.render_pdf import M, W
+
+    q = build(
+        QuoteIn.model_validate(quote(quote_no="W" * 40, their_ref=value, prepared_by="W" * 60)), today=TODAY
+    )
+    entries = []
+
+    def visit(text, cm, tm, font, size):
+        if text.strip():
+            entries.append((text.strip(), tm[4], tm[5], size))
+
+    page = PdfReader(io.BytesIO(render_pdf(q))).pages[0]
+    page.extract_text(visitor_text=visit)
+    metadata = [(t, x, y, s) for t, x, y, s in entries if abs(x - 145 * 72 / 25.4) < 0.01 and s == 8.5]
+    assert all(x + stringWidth(t, "Helvetica", s) <= W - M + 0.01 for t, x, _, s in metadata)
+    assert len({y for _, _, y, _ in metadata}) == len(metadata)
+    assert "".join(t for t, _, _, _ in metadata).replace(" ", "") == (
+        f"{'W' * 40}(version1)22October202621November2026{value}{'W' * 60}"
+    ).replace(" ", "")
+    table_y = next(y for t, _, y, _ in entries if t == "Part and description")
+    assert table_y < min(y for _, _, y, _ in metadata) - 10

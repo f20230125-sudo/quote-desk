@@ -49,6 +49,31 @@ test("saving a version and seeing what changed since", async ({ page }) => {
   await expect(page.locator(".diff")).toContainText("PER760-XS2: unit price 45,900.00 to 44,900.00.");
 });
 
+test("renaming a quotation keeps its saved history and comparison after reload", async ({ page }) => {
+  await page.getByRole("button", { name: "Save as version 1" }).click();
+  await expect(page.locator("h1")).toContainText("version 2");
+  await page.getByLabel("Quotation number").fill("Q-RENAMED");
+  await page.getByRole("button", { name: "What changed since" }).click();
+  await expect(page.locator(".diff")).toContainText("Quotation number Q-2026-0412 to Q-RENAMED.");
+  await page.getByRole("button", { name: "Save as version 2" }).click();
+  await expect(page.locator("h1")).toContainText("version 3");
+  await page.reload();
+  await expect(page.getByRole("list", { name: "Versions" }).getByRole("listitem")).toHaveCount(2);
+});
+
+test("saving version 99 leaves version 100 ready to check and download", async ({ page }) => {
+  await page.evaluate(() => {
+    const draft = JSON.parse(localStorage.getItem("quote-desk:draft")!);
+    localStorage.setItem("quote-desk:draft", JSON.stringify({ ...draft, version: 99 }));
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Save as version 99" }).click();
+  await expect(page.getByRole("button", { name: "Save as version 100" })).toBeEnabled();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: /PDF/ }).click();
+  expect((await download).suggestedFilename()).toBe("Q-2026-0412-v100.pdf");
+});
+
 test("a second tab cannot replace a saved quotation version", async ({ page, context }) => {
   const other = await context.newPage();
   await other.goto("/");
@@ -70,6 +95,11 @@ test("different quotations keep their own version one", async ({ page, context }
   const other = await context.newPage();
   await other.goto("/");
   await expect(other.locator(".lede")).toContainText("AED");
+  await other.evaluate(() => {
+    const draft = JSON.parse(localStorage.getItem("quote-desk:draft")!);
+    localStorage.setItem("quote-desk:draft", JSON.stringify({ ...draft, quote_id: crypto.randomUUID() }));
+  });
+  await other.reload();
   await other.getByLabel("Quotation number").fill("Q-OTHER");
   await expect(other.getByRole("button", { name: "Save as version 1" })).toBeEnabled();
   await page.getByRole("button", { name: "Save as version 1" }).click();

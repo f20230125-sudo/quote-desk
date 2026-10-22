@@ -5,6 +5,7 @@ drafts and versions stay in the browser. Vercel runs this as one function; deep 
 """
 
 from datetime import date
+from io import BytesIO
 from pathlib import Path
 
 from flask import Flask, Response, jsonify, request, send_file
@@ -12,6 +13,7 @@ from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException
 
 from backend import catalog
+from backend.pdf_text import pdf_text_errors
 from backend.quote import Quote, QuoteIn, build
 from backend.render_docx import render_docx
 from backend.render_pdf import render_pdf
@@ -105,20 +107,21 @@ def check():
 
 
 def _file(data: bytes, mime: str, name: str) -> Response:
-    return Response(
-        data,
+    response = send_file(
+        BytesIO(data),
         mimetype=mime,
-        headers={
-            "Content-Disposition": f'attachment; filename="{name}"',
-            "X-Content-Type-Options": "nosniff",
-            "Cache-Control": "no-store",
-        },
+        as_attachment=True,
+        download_name=name,
     )
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.post("/api/quote/pdf")
 def pdf():
     qt = _quote()
+    if details := pdf_text_errors(qt):
+        raise BadQuote(details)
     return _file(render_pdf(qt), "application/pdf", f"{qt.q.quote_no}-v{qt.q.version}.pdf")
 
 

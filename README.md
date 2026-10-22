@@ -20,10 +20,12 @@ every document is built from the same, current parts.
     electronic invoice need it)
   - a clause in an old version, or the payment or validity clause left out (warning)
 - **Writes the document** from one template, in Python: a PDF with the letterhead, lines, totals, terms and
-  signature blocks, page numbers on every page, and **DRAFT across every page while a check still blocks it**; and
-  the same content as a Word file for procurement teams that mark quotations up.
+  signature blocks, page numbers on every page, and **DRAFT across every page while commercial checks block
+  sending**; and the same content as a Word file for procurement teams that mark quotations up. Text the PDF
+  fonts cannot draw is flagged during checks and refused by the PDF download; Word keeps it.
 - **Keeps versions**: save version 1, change the draft, and see in words what changed ("PER760-XS2: unit price
-  45,900.00 to 44,900.00.").
+  45,900.00 to 44,900.00."). History stays with the quotation when its number changes, and saving continues
+  beyond version 99. Quotation numbers use the API's whitespace normalization for storage and conflicts.
 - **Company assets** page: the brand rule, the letterhead details, every clause with its version history (in force,
   retired, from and to), and the policy the checks enforce.
 
@@ -50,9 +52,11 @@ python -m venv .venv && .venv/Scripts/pip install -r requirements-dev.txt     # 
 npm --prefix web ci && npm --prefix web run dev                                # http://127.0.0.1:5200
 ```
 
-Tests: `pytest` (64: figures, every check, document validation, the PDF text and page numbering, the Word file,
-the API and the setup command), `npm --prefix web test` (8: the version comparison), `npm --prefix web run e2e`
-(16 in a real browser: editing, downloads, versions, tab conflicts, storage failures and stale checks, with axe
+Tests: `pytest` (90: figures, every check, document validation, PDF metadata wrapping, glyph checks, download
+headers, versions beyond 99, the PDF text and page numbering, the Word file, the API and the setup command),
+`npm --prefix web test` (17: version comparison, number normalization, quotation identity, saved history and API
+payloads), `npm --prefix web run e2e`
+(18 in a real browser: editing, downloads, versions, renaming, tab conflicts, storage failures and stale checks, with axe
 accessibility checks in light and dark). The browser tests use Flask and Vite running locally as above.
 
 ## Limits
@@ -60,6 +64,9 @@ accessibility checks in light and dark). The browser tests use Flask and Vite ru
 - One currency (AED) and one VAT rate (5%).
 - No logins or approval workflow: the approver is a name typed on the quotation.
 - Drafts and versions live in one browser, not in a database.
+- PDF uses built-in fonts. Arabic and other text those fonts cannot draw produce field-specific blocking
+  findings during checks and a 400 response for PDF downloads. The Word file preserves the text; no fonts or
+  Arabic shaping support are bundled.
 - Synthetic company, products and prices.
 
 Built by Uzair Khan.

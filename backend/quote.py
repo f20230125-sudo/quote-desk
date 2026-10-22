@@ -11,6 +11,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from backend import catalog
+from backend.pdf_text import pdf_text_errors
 
 CENT = Decimal("0.01")
 VAT = Decimal("0.05")
@@ -37,7 +38,7 @@ class LineIn(BaseModel):
 class QuoteIn(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     quote_no: str = Field(min_length=3, max_length=40)
-    version: int = Field(default=1, ge=1, le=99)
+    version: int = Field(default=1, ge=1)
     customer_code: str
     their_ref: str = Field(default="", max_length=60)
     issue_date: date
@@ -204,6 +205,7 @@ def build(q: QuoteIn, today: date | None = None) -> Quote:
 def check(quote: Quote, today: date, policy: dict) -> list[Finding]:
     out: list[Finding] = []
     q = quote.q
+    out += [Finding("block", error["message"]) for error in pdf_text_errors(quote)]
     floor = Decimal(policy["margin_floor_pct"])
     approval = Decimal(policy["discount_approval_pct"])
     products = catalog.products()
