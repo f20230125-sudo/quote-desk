@@ -18,7 +18,7 @@ export function Assets({ data }: { data: Data }) {
   return (
     <div className="page">
       <h1>Company assets</h1>
-      <p className="lede">The approved pieces every quotation is built from. Change them here once; every new document picks them up.</p>
+      <p className="lede">The letterhead, clause versions and commercial policy used by every quotation. This demo shows them for reference.</p>
 
       <section aria-labelledby="brand-h">
         <h2 id="brand-h">Brand and letterhead</h2>

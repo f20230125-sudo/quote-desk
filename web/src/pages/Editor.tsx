@@ -21,6 +21,8 @@ export function Editor({ data }: { data: Data }) {
   const [result, setResult] = useState<{ draft: Draft; value: Checked } | null>(null);
   const checked = result?.draft === draft ? result.value : null;
   const [error, setError] = useState<string | null>(null);
+  const [checkAttempt, setCheckAttempt] = useState(0);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [savedVersions, setVersions] = useState<SavedVersion[]>(drafts.versions);
@@ -55,7 +57,7 @@ export function Editor({ data }: { data: Data }) {
       active = false;
       window.clearTimeout(timer.current);
     };
-  }, [draft]);
+  }, [draft, checkAttempt]);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }));
   const setLine = (i: number, patch: Partial<Draft["lines"][number]>) =>
@@ -65,11 +67,12 @@ export function Editor({ data }: { data: Data }) {
   const byLine = (n: number) => checked?.findings.filter((f) => f.line === n) ?? [];
 
   const download = async (kind: "pdf" | "docx") => {
+    setDownloadError(null);
     setBusy(kind);
     try {
       saveBlob(await api.file(draft, kind), `${draft.quote_no}-v${draft.version}.${kind}`);
     } catch (e) {
-      setError((e as Error).message);
+      setDownloadError((e as Error).message);
     } finally {
       setBusy(null);
     }
@@ -97,6 +100,8 @@ export function Editor({ data }: { data: Data }) {
       <h1>
         <span className="mono">{draft.quote_no}</span> <span className="version">version {draft.version}</span>
       </h1>
+      <p className="intro">Build an IT quotation, check prices and terms, then download a PDF or Word file. Demo data.</p>
+      <p className="first-step">Start with the checks on this example, then edit the quotation. <a href="#checks-h">Review checks</a> · <a href="#lines-h">Edit lines</a></p>
       <p className="lede" aria-live="polite">
         {checked ? (
           <>
@@ -106,14 +111,14 @@ export function Editor({ data }: { data: Data }) {
               : `${blocks ? `${blocks} ${blocks === 1 ? "check blocks" : "checks block"} sending` : "Nothing blocks sending"}${warns ? `; ${warns} ${warns === 1 ? "needs" : "need"} a look` : ""}.`}
           </>
         ) : (
-          error ? "Checks failed." : "Checking."
+          error ? "Checks could not finish. Retry below." : "Checking prices and terms. Totals will appear here."
         )}
       </p>
 
       <div className="editor-grid">
         <form className="editor" onSubmit={(e) => e.preventDefault()}>
           <fieldset>
-            <legend>For</legend>
+            <legend>Customer and dates</legend>
             <div className="row2">
               <label>
                 <span>Customer</span>
@@ -147,8 +152,9 @@ export function Editor({ data }: { data: Data }) {
           </fieldset>
 
           <fieldset>
-            <legend>Lines</legend>
-            <table className="lines">
+            <legend id="lines-h" tabIndex={-1}>Lines</legend>
+            <p className="field-hint">Prices and amounts in AED. Margin is internal.</p>
+            <table className="lines" role="table" aria-label="Quotation lines">
               <thead>
                 <tr>
                   <th scope="col">Part</th>
@@ -177,8 +183,9 @@ export function Editor({ data }: { data: Data }) {
                   const c = checked?.lines.find((x) => x.n === i + 1);
                   const issues = byLine(i + 1);
                   return [
-                    <tr key={l.id} className={issues.some((f) => f.severity === "block") ? "blocked" : ""}>
-                      <td>
+                    <tr key={l.id} role="row" className={issues.some((f) => f.severity === "block") ? "blocked" : ""}>
+                      <td role="cell">
+                        <span className="mobile-label" aria-hidden="true">Line {i + 1} part</span>
                         <select
                           className="mono"
                           aria-label={`Line ${i + 1} part`}
@@ -193,21 +200,24 @@ export function Editor({ data }: { data: Data }) {
                         </select>
                         <span className="sub">{products.get(l.part_number)?.description}</span>
                       </td>
-                      <td className="num">
+                      <td className="num" role="cell">
+                        <span className="mobile-label" aria-hidden="true">Quantity</span>
                         <input aria-label={`Line ${i + 1} quantity`} inputMode="numeric" value={l.qty}
                           onChange={(e) => setLine(i, { qty: Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 1) })} />
                       </td>
-                      <td className="num">
+                      <td className="num" role="cell">
+                        <span className="mobile-label" aria-hidden="true">Unit price (AED)</span>
                         <input aria-label={`Line ${i + 1} unit price`} inputMode="decimal" value={l.unit_price}
                           onChange={(e) => setLine(i, { unit_price: e.target.value })} />
                       </td>
-                      <td className="num">
+                      <td className="num" role="cell">
+                        <span className="mobile-label" aria-hidden="true">Discount %</span>
                         <input aria-label={`Line ${i + 1} discount percent`} inputMode="decimal" value={l.discount_pct}
                           onChange={(e) => setLine(i, { discount_pct: e.target.value || "0" })} />
                       </td>
-                      <td className="num figure">{fmt(c?.net)}</td>
-                      <td className="num figure quiet">{c?.margin_pct != null ? `${Number(c.margin_pct)}%` : ""}</td>
-                      <td>
+                      <td className="num figure" role="cell"><span className="mobile-label" aria-hidden="true">Amount (AED)</span>{c ? fmt(c.net) : "Pending"}</td>
+                      <td className="num figure quiet" role="cell"><span className="mobile-label" aria-hidden="true">Margin (internal)</span>{c?.margin_pct != null ? `${Number(c.margin_pct)}%` : c ? "Not available" : "Pending"}</td>
+                      <td role="cell">
                         <button type="button" className="link" aria-label={`Remove line ${i + 1}`}
                           onClick={() => setDraft((d) => ({ ...d, lines: d.lines.filter((_, j) => j !== i) }))}>
                           Remove
@@ -225,6 +235,7 @@ export function Editor({ data }: { data: Data }) {
                 })}
               </tbody>
             </table>
+            {draft.lines.length === 0 && <p className="quiet">No lines yet. Add a line to choose a product and enter its quantity and price.</p>}
             <button type="button" className="link add"
               onClick={() => setDraft((d) => ({ ...d, lines: [...d.lines, { id: crypto.randomUUID(), part_number: data.catalogue[0].part_number, qty: 1, unit_price: data.catalogue[0].list_price, discount_pct: "0" }] }))}>
               Add a line
@@ -275,26 +286,29 @@ export function Editor({ data }: { data: Data }) {
               </label>
               <label>
                 <span>Discount approved by</span>
-                <input value={draft.approved_by} placeholder={`Needed above ${data.assets.policy.discount_approval_pct}%`}
+                <input value={draft.approved_by} aria-describedby="approval-hint"
                   onChange={(e) => set("approved_by", e.target.value)} />
+                <span className="field-hint" id="approval-hint">Needed for discounts above {data.assets.policy.discount_approval_pct}%.</span>
               </label>
             </div>
           </fieldset>
         </form>
 
         <aside className="side" aria-labelledby="checks-h">
-          <h2 id="checks-h">Before it goes out</h2>
-          {(error || storageError || draftError) && (
+          <h2 id="checks-h" tabIndex={-1}>Before it goes out</h2>
+          {(error || downloadError || storageError || draftError) && (
             <p className="form-error" role="alert">
-              {error || storageError || draftError}
+              {error || downloadError || storageError || draftError}
             </p>
           )}
+          {error && <button type="button" className="button" onClick={() => { setError(null); setCheckAttempt((n) => n + 1); }}>Retry checks</button>}
+          {!checked && !error && <p className="quiet" role="status">Checking the current quotation. Totals and findings will appear here.</p>}
           {checked && checked.findings.length === 0 && <p>Every check passes.</p>}
           <ul className="findings">
             {checked?.findings.map((f, i) => (
               <li key={i} className={f.severity}>
                 <Mark severity={f.severity} />
-                <span>{f.message}</span>
+                <span><strong className="finding-label">{f.severity === "block" ? "Blocks sending" : f.severity === "warn" ? "Review" : "Note"}</strong>{f.message}</span>
               </li>
             ))}
           </ul>
@@ -324,20 +338,22 @@ export function Editor({ data }: { data: Data }) {
               </div>
             </dl>
           )}
-          <div className="actions">
+          <h2 className="side-section">Download files</h2>
+          <div className="actions" aria-busy={busy === "pdf" || busy === "docx"}>
             <button type="button" className={`button${checked && !checked.blocked ? " primary" : ""}`} disabled={busy !== null} onClick={() => void download("pdf")}>
-              {checked?.blocked ? "Download draft PDF" : "Download PDF"}
+              {busy === "pdf" ? "Preparing PDF..." : checked?.blocked ? "Download draft PDF" : "Download PDF"}
             </button>
             <button type="button" className="button" disabled={busy !== null} onClick={() => void download("docx")}>
-              Word file
-            </button>
-            <button type="button" className="button" disabled={!checked || busy !== null} onClick={() => void saveVersion()}>
-              Save as version {draft.version}
+              {busy === "docx" ? "Preparing Word file..." : "Download Word file"}
             </button>
           </div>
           {checked?.blocked && <p className="quiet small">A quotation a check still blocks is marked DRAFT on every page.</p>}
 
-          <h2 id="versions-h">Versions</h2>
+          <h2 id="versions-h" className="side-section">Versions</h2>
+          <p className="quiet small">Draft edits save automatically in this browser. Save a version to keep a snapshot for comparison.</p>
+          <button type="button" className="button" disabled={!checked || busy !== null} onClick={() => void saveVersion()}>
+            {busy === "save" ? "Saving version..." : `Save as version ${draft.version}`}
+          </button>
           {versions.length === 0 ? (
             <p className="quiet small">None saved yet. Save one to compare later changes against it.</p>
           ) : (
