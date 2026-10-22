@@ -46,13 +46,14 @@ every document is built from the same, current parts.
 
 ```bash
 python -m venv .venv && .venv/Scripts/pip install -r requirements-dev.txt     # Python 3.14
-python -m flask --app app run -p 5201
+.venv/Scripts/python -m flask --app app run -p 5201
 npm --prefix web ci && npm --prefix web run dev                                # http://127.0.0.1:5200
 ```
 
-Tests: `pytest` (16: figures, every check, the PDF text and page numbering, the Word file, the API),
-`npm --prefix web test` (2: the version comparison), `npm --prefix web run e2e` (6 in a real browser, with axe
-accessibility checks in light and dark).
+Tests: `pytest` (64: figures, every check, document validation, the PDF text and page numbering, the Word file,
+the API and the setup command), `npm --prefix web test` (8: the version comparison), `npm --prefix web run e2e`
+(16 in a real browser: editing, downloads, versions, tab conflicts, storage failures and stale checks, with axe
+accessibility checks in light and dark). The browser tests use Flask and Vite running locally as above.
 
 ## Limits
 

@@ -25,7 +25,9 @@ async function call(path: string, init?: RequestInit): Promise<Response> {
 }
 
 const post = (path: string, draft: Draft) =>
-  call(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(draft) });
+  call(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+    ...draft, lines: draft.lines.map(({ id: _id, ...line }) => line),
+  }) });
 
 export const api = {
   data: async (): Promise<Data> => (await call("/api/data")).json(),

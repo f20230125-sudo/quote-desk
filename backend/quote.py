@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from backend import catalog
 
@@ -41,7 +41,7 @@ class QuoteIn(BaseModel):
     customer_code: str
     their_ref: str = Field(default="", max_length=60)
     issue_date: date
-    valid_days: int = Field(default=30, ge=1, le=180)
+    valid_days: int = Field(default=30, ge=1, le=180, validate_default=True)
     prepared_by: str = Field(default="", max_length=60)
     lines: list[LineIn] = Field(default_factory=list, max_length=100)
     clauses: list[str] = Field(default_factory=list, max_length=20)
@@ -49,6 +49,40 @@ class QuoteIn(BaseModel):
         default_factory=dict
     )  # a saved quote keeps the versions it was sent with
     approved_by: str = Field(default="", max_length=60)
+
+    @field_validator("quote_no", mode="before")
+    @classmethod
+    def _single_line_number(cls, v):
+        if isinstance(v, str) and ("\r" in v or "\n" in v):
+            raise ValueError("quotation number cannot contain line breaks")
+        return v
+
+    @field_validator("quote_no", "their_ref", "prepared_by", "approved_by", mode="before")
+    @classmethod
+    def _document_text(cls, v):
+        if isinstance(v, str) and any(
+            not (c in "\t\n\r" or "\x20" <= c <= "\ud7ff" or "\ue000" <= c <= "\ufffd" or ord(c) >= 0x10000)
+            for c in v
+        ):
+            raise ValueError("text contains a character that cannot be used in a document")
+        return v
+
+    @field_validator("valid_days")
+    @classmethod
+    def _valid_expiry(cls, v, info: ValidationInfo):
+        issued = info.data.get("issue_date")
+        if issued is not None and v > (date.max - issued).days:
+            raise ValueError("validity ends beyond the supported calendar")
+        return v
+
+    @field_validator("clause_versions")
+    @classmethod
+    def _known_versions(cls, v):
+        for cid, version in v.items():
+            c = catalog.clause(cid)
+            if c is None or not any(x["v"] == version for x in c["versions"]):
+                raise ValueError(f"no version {version} for clause {cid}")
+        return v
 
     @field_validator("customer_code")
     @classmethod
@@ -113,8 +147,7 @@ def build(q: QuoteIn, today: date | None = None) -> Quote:
         if p is None:
             findings.append(Finding("block", f"Line {n}: {li.part_number} is not in the catalogue.", n))
             continue
-        price = r2(li.unit_price * (1 - li.discount_pct / 100))
-        net = r2(price * li.qty)
+        net = r2(li.unit_price * li.qty * (1 - li.discount_pct / 100))
         cost = Decimal(p["cost"])
         margin = net - r2(cost * li.qty)
         lines.append(
@@ -187,7 +220,7 @@ def check(quote: Quote, today: date, policy: dict) -> list[Finding]:
                     ln.n,
                 )
             )
-        elif ln.margin_pct is not None and ln.margin_pct < floor:
+        elif ln.net and ln.margin / ln.net * 100 < floor:
             out.append(
                 Finding(
                     "warn",
