@@ -1,0 +1,61 @@
+{
+ "brand": {
+  "wordmark": "Keystone",
+  "tagline": "Data Systems",
+  "ink": "#1a1a1a",
+  "rule": "#8c8c8c",
+  "approved": "2026-02-01",
+  "note": "One colour, black, on white. The wordmark is set, never redrawn."
+ },
+ "clauses": [
+  {
+   "id": "payment",
+   "title": "Payment",
+   "versions": [
+    {"v": 1, "from": "2024-01-01", "to": "2026-06-30", "text": "Payment within 45 days of the invoice date."},
+    {"v": 2, "from": "2026-07-01", "to": null, "text": "Payment within 30 days of the invoice date, by bank transfer to the account below."}
+   ]
+  },
+  {
+   "id": "validity",
+   "title": "Validity",
+   "versions": [
+    {"v": 1, "from": "2024-01-01", "to": null, "text": "Prices are valid until the date shown above. Distributor prices for hardware can change after that date."}
+   ]
+  },
+  {
+   "id": "delivery",
+   "title": "Delivery",
+   "versions": [
+    {"v": 1, "from": "2024-01-01", "to": null, "text": "Lead times are counted from receipt of your purchase order and are the distributor's estimates. Goods are delivered to one address in the UAE."}
+   ]
+  },
+  {
+   "id": "warranty",
+   "title": "Warranty and support",
+   "versions": [
+    {"v": 1, "from": "2024-01-01", "to": null, "text": "Hardware carries the manufacturer's warranty. Support with a 30-minute response is included where ProSupport or our Value Added Support is quoted."}
+   ]
+  },
+  {
+   "id": "einvoice",
+   "title": "Electronic invoicing",
+   "versions": [
+    {"v": 1, "from": "2026-07-01", "to": null, "text": "From 2027 our invoices are sent as UAE electronic invoices. Please confirm your Tax Registration Number so the invoice reaches you."}
+   ]
+  },
+  {
+   "id": "law",
+   "title": "Governing law",
+   "versions": [
+    {"v": 1, "from": "2024-01-01", "to": null, "text": "This quotation is governed by the laws of the Emirate of Dubai and the federal laws of the UAE."}
+   ]
+  }
+ ],
+ "policy": {
+  "margin_floor_pct": "10",
+  "discount_approval_pct": "15",
+  "default_valid_days": 30,
+  "approver": "Sales Manager"
+ }
+}
